@@ -13,12 +13,7 @@ mongoose
 
 const app = express();
 
-app.use(express.json());
-app.use(
-  cors({
-    origin: "*",
-  })
-);
+app.set("trust proxy", true);
 
 // middleware
 const rateLimiter = expressRateLimit({
@@ -27,6 +22,15 @@ const rateLimiter = expressRateLimit({
   message: "Too many req",
 });
 
+app.use(express.json());
+app.use(
+  cors({
+    origin: "*",
+  })
+);
+
+app.use(rateLimiter);
+
 app.get("/api", (req, res) => {
   res.status(200).json({
     message: "Jalan kok",
@@ -34,7 +38,7 @@ app.get("/api", (req, res) => {
   });
 });
 
-app.post("/api/create-quiz", rateLimiter, async (req, res) => {
+app.post("/api/create-quiz", async (req, res) => {
   const { id_quiz, quizes } = req.body;
   const quiz = new Quiz({
     id_quiz,
