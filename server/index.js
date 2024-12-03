@@ -27,6 +27,13 @@ const rateLimiter = expressRateLimit({
   message: "Too many req",
 });
 
+app.get("/api", (req, res) => {
+  res.status(200).json({
+    message: "Jalan kok",
+    status: 200,
+  });
+});
+
 app.post("/api/create-quiz", rateLimiter, async (req, res) => {
   const { id_quiz, quizes } = req.body;
   const quiz = new Quiz({
