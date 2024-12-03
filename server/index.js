@@ -13,13 +13,15 @@ mongoose
 
 const app = express();
 
-app.set("trust proxy", true);
+app.set("trust proxy", 1);
 
 // middleware
 const rateLimiter = expressRateLimit({
   windowMs: 10 * 60 * 1000,
   max: 5,
   message: "Too many req",
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 app.use(express.json());
