@@ -18,7 +18,7 @@ app.set("trust proxy", 1);
 // middleware
 const rateLimiter = expressRateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 15,
+  max: 30,
   message: "Too many req",
   standardHeaders: true,
   legacyHeaders: false,
@@ -38,7 +38,20 @@ app.get("/api", (req, res) => {
   });
 });
 
-app.post("/api/create-quiz", rateLimiter, async (req, res) => {
+app.get("/api/answer/:id_quiz", async (req, res) => {
+  const { id_quiz } = req.params;
+  const data = await Quiz.findOne({ id_quiz });
+  // console.log(data);
+  res.status(200).json({
+    message: "Get your data",
+    status: 200,
+    quiz: data,
+  });
+});
+
+app.use(rateLimiter);
+
+app.post("/api/create-quiz", async (req, res) => {
   const { id_quiz, quizes } = req.body;
   const quiz = new Quiz({
     id_quiz,
@@ -49,17 +62,6 @@ app.post("/api/create-quiz", rateLimiter, async (req, res) => {
   res.status(201).json({
     message: "New data",
     status: 201,
-  });
-});
-
-app.get("/api/answer/:id_quiz", async (req, res) => {
-  const { id_quiz } = req.params;
-  const data = await Quiz.findOne({ id_quiz });
-  // console.log(data);
-  res.status(200).json({
-    message: "Get your data",
-    status: 200,
-    quiz: data,
   });
 });
 
