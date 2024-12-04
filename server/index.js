@@ -18,7 +18,7 @@ app.set("trust proxy", 1);
 // middleware
 const rateLimiter = expressRateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 5,
+  max: 15,
   message: "Too many req",
   standardHeaders: true,
   legacyHeaders: false,
@@ -31,8 +31,6 @@ app.use(
   })
 );
 
-app.use(rateLimiter);
-
 app.get("/api", (req, res) => {
   res.status(200).json({
     message: "Jalan kok",
@@ -40,7 +38,7 @@ app.get("/api", (req, res) => {
   });
 });
 
-app.post("/api/create-quiz", async (req, res) => {
+app.post("/api/create-quiz", rateLimiter, async (req, res) => {
   const { id_quiz, quizes } = req.body;
   const quiz = new Quiz({
     id_quiz,
