@@ -4,6 +4,7 @@ import cors from "cors";
 import mongoose from "mongoose";
 import Quiz from "./models/quizModel.js";
 import expressRateLimit from "express-rate-limit";
+import getToken from "./function/getToken.js";
 
 config();
 mongoose
@@ -12,6 +13,8 @@ mongoose
   .catch((err) => console.log("Error ", err));
 
 const app = express();
+
+
 
 app.set("trust proxy", 1);
 
@@ -36,6 +39,42 @@ app.get("/api", (req, res) => {
     message: "Jalan kok",
     status: 200,
   });
+});
+
+app.get("/api/lagu_spotify", async (req, res) => {
+  try {
+    const token = await getToken();
+
+    const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
+      headers: {
+        "Authorization": `Bearer ${token}`
+      }
+    })
+
+    if(response.status == 204 || response.status > 400) {
+      return res.status(200).json({
+        message: 'Putro tidak lagi memutar spotifynya 🗣️',
+        status: 200
+      })
+    }
+
+
+    const data = await response.json()
+    const songData = {
+      imgLagu: data.item.album.images[0]?.url,
+      artist: data.item.artists.map((artist) => artist.name).join(", "),
+      judul: data.item.name
+    }
+    
+    res.status(200).json(songData)
+  } catch (err) {
+    console.log('Error', err)
+    res.status(500).json({
+      message: 'Error server lah',
+      status: 500
+    })
+  }
+
 });
 
 app.get("/api/answer/:id_quiz", async (req, res) => {
