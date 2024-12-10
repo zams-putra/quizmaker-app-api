@@ -13,7 +13,7 @@ const getToken = async() => {
     const response = await fetch('https://accounts.spotify.com/api/token', {
         method: "POST",
         headers: {
-            Authorization: `Basic ${basic}`,
+            "Authorization": `Basic ${basic}`,
             "Content-Type": "application/x-www-form-urlencoded",
      
         },
