@@ -77,6 +77,46 @@ app.get("/api/lagu_spotify", async (req, res) => {
 
 });
 
+app.get("/api/fav_song", async (req, res) => {
+  try {
+    const token = await getToken();
+
+    const response = await fetch(
+      "https://api.spotify.com/v1/me/top/tracks?time_range=long_term&limit=1&offset=1",
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      console.log(await response.text()); // debug
+      return res.status(500).json({
+        message: "Gagal fetch data dari Spotify",
+        status: 500,
+      });
+    }
+
+    const data = await response.json();
+    const lagu = data.items[0];
+
+    const result = {
+      artist: lagu.artists.map((a) => a.name).join(", "),
+      judul: lagu.name,
+      imgLagu: lagu.album.images[0]?.url,
+    };
+
+    res.status(200).json(result);
+  } catch (err) {
+    console.log("Error", err);
+    res.status(500).json({
+      message: "Error server lah",
+      status: 500,
+    });
+  }
+});
+
 app.get("/api/answer/:id_quiz", async (req, res) => {
   const { id_quiz } = req.params;
   const data = await Quiz.findOne({ id_quiz });
