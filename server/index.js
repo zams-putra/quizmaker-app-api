@@ -63,7 +63,10 @@ app.get("/api/lagu_spotify", async (req, res) => {
     const songData = {
       imgLagu: data.item.album.images[0]?.url,
       artist: data.item.artists.map((artist) => artist.name).join(", "),
-      judul: data.item.name
+      judul: data.item.name,
+      progress_ms: data.progress_ms,
+      duration_ms: data.item.duration_ms,
+      is_playing: data.is_playing,
     }
     
     res.status(200).json(songData)
