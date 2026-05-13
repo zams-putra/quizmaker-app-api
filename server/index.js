@@ -5,6 +5,7 @@ import mongoose from "mongoose";
 import Quiz from "./models/quizModel.js";
 import expressRateLimit from "express-rate-limit";
 import getToken from "./function/getToken.js";
+import { SYSTEM_PROMPT } from "./function/systemPrompt.js";
 
 config();
 mongoose
@@ -21,7 +22,7 @@ app.set("trust proxy", 1);
 // middleware
 const rateLimiter = expressRateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 30,
+  max: 15,
   message: "Too many req",
   standardHeaders: true,
   legacyHeaders: false,
@@ -45,15 +46,18 @@ app.get("/api/lagu_spotify", async (req, res) => {
   try {
     const token = await getToken();
 
+
     const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
       headers: {
         "Authorization": `Bearer ${token}`
       }
     })
 
+    console.log("STATUS:", response.status, response);
+
     if(response.status == 204 || response.status > 400) {
       return res.status(200).json({
-        message: 'Putro tidak lagi memutar spotifynya 🗣️',
+        message: 'Putro sedang tidak memutar spotifynya 🗣️',
         status: 200
       })
     }
@@ -81,6 +85,7 @@ app.get("/api/lagu_spotify", async (req, res) => {
 });
 
 app.get("/api/fav_song", async (req, res) => {
+  const FAVORITE_TRACK_ID = "1ai6CZYghbvcxEGeedqXoM";
   try {
     const token = await getToken();
 
@@ -92,6 +97,34 @@ app.get("/api/fav_song", async (req, res) => {
         },
       }
     );
+
+    if (response.status === 403 || !response.ok) {
+      console.log("Top tracks gagal, kudu premium yaelah fallback ke yg hardcode");
+
+      const fallbackResponse = await fetch(
+        `https://api.spotify.com/v1/tracks/${FAVORITE_TRACK_ID}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      console.log("Fallback status:", fallbackResponse.status);
+      console.log("Fallback Track ID:", FAVORITE_TRACK_ID);
+      const fallbackText = await fallbackResponse.text(); // baca raw dulu
+      console.log("Fallback response:", fallbackText);
+
+      if (!fallbackResponse.ok) {
+        return res.status(500).json({ message: "Gagal fetch data dari Spotify", status: 500 });
+      }
+
+      const fallbackData = await fallbackResponse.json();
+      return res.status(200).json({
+        artist: fallbackData.artists.map((a) => a.name).join(", "),
+        judul: fallbackData.name,
+        imgLagu: fallbackData.album.images[0]?.url,
+        message: "Butuh Spotify Premium buat top tracknya jadi dapetnya yg hardcode aja",
+        status: 200
+      });
+    }
 
     if (!response.ok) {
       console.log(await response.text()); // debug
@@ -146,6 +179,43 @@ app.post("/api/create-quiz", async (req, res) => {
     status: 201,
   });
 });
+
+app.post("/api/chat", rateLimiter, async (req, res) => {
+  const { messages } = req.body;
+
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: SYSTEM_PROMPT }]
+          },
+          contents: messages.map(msg => ({
+            role: msg.role === "assistant" ? "model" : "user",
+            parts: [{ text: msg.content }]
+          })),
+          generationConfig: {
+            maxOutputTokens: 300,
+            temperature: 0.7,
+          }
+        })
+      }
+    )
+
+    const data = await response.json()
+    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Something went wrong."
+    res.status(200).json({ reply })
+
+  } catch (err) {
+    console.log("Error", err)
+    res.status(500).json({ message: "Error server lah", status: 500 })
+  }
+})
+
+
 
 const port = process.env.PORT || 5000;
 
