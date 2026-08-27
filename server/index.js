@@ -14,10 +14,19 @@ mongoose
   .catch((err) => console.log("Error ", err));
 
 const app = express();
-
-
-
 app.set("trust proxy", 1);
+
+app.use(
+  cors({
+    origin: "https://zamsputra.my.id",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+app.options("*", cors());
+
+
 
 // middleware
 const rateLimiter = expressRateLimit({
@@ -29,11 +38,7 @@ const rateLimiter = expressRateLimit({
 });
 
 app.use(express.json());
-app.use(
-  cors({
-    origin: "*",
-  })
-);
+
 
 app.get("/api", (req, res) => {
   res.status(200).json({
