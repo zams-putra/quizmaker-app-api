@@ -179,7 +179,7 @@ app.post("/api/create-quiz", async (req, res) => {
 });
 
 
-async function fetchGemini(url, options, retries = 3) {
+async function fetchGemini(url, options, retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const response = await fetch(url, options);
 
@@ -188,7 +188,7 @@ async function fetchGemini(url, options, retries = 3) {
     }
 
     if (attempt < retries) {
-      const delay = 1000 * 2 ** attempt;
+      const delay = 2000 * 2 ** attempt;
 
       console.log(
         `Gemini 503. Retry ${attempt + 1}/${retries} dalam ${delay}ms...`
@@ -197,6 +197,8 @@ async function fetchGemini(url, options, retries = 3) {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
+
+  throw new Error("Gemini unavailable after retries");
 }
 
 app.post("/api/chat", rateLimiter, async (req, res) => {
