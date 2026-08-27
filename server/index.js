@@ -274,8 +274,21 @@ app.post("/api/chat", rateLimiter, async (req, res) => {
 })
 
 
+app.get("/api/test", (req, res) => {
+    res.json({
+        message: "Express Vercel works",
+        time: new Date().toISOString()
+    });
+});
+
 
 
 const port = process.env.PORT || 5000;
 
-app.listen(port, () => console.log("Web started on http://localhost:5000"));
+if (process.env.NODE_ENV !== "production") {
+    app.listen(port, () => {
+        console.log(`Web started on http://localhost:${port}`);
+    });
+}
+
+export default app;
