@@ -178,44 +178,84 @@ app.post("/api/create-quiz", async (req, res) => {
   });
 });
 
+
+async function fetchGemini(url, options, retries = 3) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const response = await fetch(url, options);
+
+    if (response.status !== 503) {
+      return response;
+    }
+
+    if (attempt < retries) {
+      const delay = 1000 * 2 ** attempt;
+
+      console.log(
+        `Gemini 503. Retry ${attempt + 1}/${retries} dalam ${delay}ms...`
+      );
+
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
 app.post("/api/chat", rateLimiter, async (req, res) => {
   const { messages } = req.body;
 
   const limitedMessages = messages.slice(-6);
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system_instruction: {
-            parts: [{ text: SYSTEM_PROMPT }]
-          },
-          contents: limitedMessages.map(msg => ({
-            role: msg.role === "assistant" ? "model" : "user",
-            parts: [{ text: msg.content }]
-          })),
-          generationConfig: {
-            maxOutputTokens: 1000,  // jawab mendalam ga panjang
-            temperature: 0.6,      // turun biar ga halu non challant
-            topP: 0.8,             // kata tajam berbobot
-            topK: 40,              // biar ga cerewet
-          }
-        })
+    const response = await fetchGemini(
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${process.env.GEMINI_API_KEY}`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      system_instruction: {
+        parts: [{ text: SYSTEM_PROMPT }]
+      },
+
+      contents: limitedMessages.map(msg => ({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts: [{ text: msg.content }]
+      })),
+
+      generationConfig: {
+        maxOutputTokens: 1000,
+        temperature: 0.6,
+        topP: 0.8,
+        topK: 40
       }
-    )
+    })
+  }
+);
+    console.log(response)
 
     const data = await response.json()
     console.log("respon:", JSON.stringify(data)) 
     console.log("Finish Reason:", data.candidates?.[0]?.finishReason);
     
     if (data.error) {
-      return res.status(data.error.code || 429).json({ 
-        reply: "abis quota gw cuk" 
+  console.log("Gemini Error:", data.error);
+
+    if (data.error.code === 429) {
+      return res.status(429).json({
+        reply: "Abis quota gw cug"
       });
     }
+
+    if (data.error.code === 503) {
+      return res.status(503).json({
+        reply: "Gemini lagi rame. Cobalagi."
+      });
+    }
+
+  return res.status(data.error.code || 500).json({
+    reply: "Gemini API error."
+  });
+}
 
     const reply = data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Something went wrong."
     res.status(200).json({ reply })
